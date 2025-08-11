@@ -1,0 +1,198 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensips
+  namespace: default
+  labels:
+    app: opensips
+    component: sip-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensips
+  template:
+    metadata:
+      labels:
+        app: opensips
+        component: sip-proxy
+    spec:
+      containers:
+      - name: opensips
+        image: europe-west4-docker.pkg.dev/gen-lang-client-0948780876/ai-voice-system/opensips:latest
+        ports:
+        - containerPort: 5060
+          protocol: TCP
+          name: sip-tcp
+        - containerPort: 5060
+          protocol: UDP
+          name: sip-udp
+        - containerPort: 8080
+          protocol: TCP
+          name: mi-http
+        env:
+        - name: OPENSIPS_CLI_URL
+          value: "http://localhost:8080/mi"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        livenessProbe:
+          tcpSocket:
+            port: 5060
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 5060
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: opensips-config
+          mountPath: /usr/local/etc/opensips
+          readOnly: true
+        - name: opensips-logs
+          mountPath: /var/log/opensips
+      volumes:
+      - name: opensips-config
+        configMap:
+          name: opensips-config
+      - name: opensips-logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensips
+  namespace: default
+  labels:
+    app: opensips
+    component: sip-proxy
+spec:
+  type: LoadBalancer
+  selector:
+    app: opensips
+  ports:
+  - name: sip-tcp
+    port: 5060
+    targetPort: 5060
+    protocol: TCP
+  - name: sip-udp
+    port: 5060
+    targetPort: 5060
+    protocol: UDP
+  - name: mi-http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensips-config
+  namespace: default
+data:
+  opensips.cfg: |
+    ####### Global Parameters #######
+    log_level=3
+    log_stderror=no
+    log_facility=LOG_LOCAL0
+    
+    children=4
+    
+    ####### Modules Section ########
+    loadmodule "signaling.so"
+    loadmodule "sl.so"
+    loadmodule "tm.so"
+    loadmodule "rr.so"
+    loadmodule "maxfwd.so"
+    loadmodule "usrloc.so"
+    loadmodule "registrar.so"
+    loadmodule "textops.so"
+    loadmodule "mi_fifo.so"
+    loadmodule "mi_http.so"
+    loadmodule "proto_udp.so"
+    loadmodule "proto_tcp.so"
+    loadmodule "event_route.so"
+    loadmodule "httpd.so"
+    
+    ####### Routing Logic ########
+    
+    # Main request routing logic
+    route{
+        # initial sanity checks
+        if (!mf_process_maxfwd_header("10")) {
+            sl_send_reply("483","Too Many Hops");
+            exit;
+        }
+        
+        if (msg:len >=  2048 ) {
+            sl_send_reply("513", "Message too big");
+            exit;
+        }
+        
+        # Record routing for in-dialog requests
+        if (has_totag()) {
+            if (loose_route()) {
+                route(relay);
+            } else {
+                sl_send_reply("404", "Not here");
+            }
+            exit;
+        }
+        
+        # Handle REGISTER requests
+        if (is_method("REGISTER")) {
+            route(register);
+            exit;
+        }
+        
+        # Handle INVITE requests - forward to AI Voice Connector
+        if (is_method("INVITE")) {
+            # Add Record-Route header
+            record_route();
+            
+            # Forward to AI Voice Connector backend
+            $ru = "sip:" + $rU + "@opensips-ai-voice-connector:8089";
+            route(relay);
+            exit;
+        }
+        
+        # Handle other methods
+        route(relay);
+    }
+    
+    route[register] {
+        if (!save("location")) {
+            sl_reply_error();
+        }
+    }
+    
+    route[relay] {
+        if (!t_relay()) {
+            sl_reply_error();
+        }
+        exit;
+    }
+    
+    ####### MI Parameters ########
+    modparam("mi_fifo", "fifo_name", "/tmp/opensips_fifo")
+    modparam("mi_http", "port", 8080)
+    modparam("httpd", "port", 8080)
+    
+    ####### Module Parameters ########
+    modparam("rr", "enable_full_lr", 1)
+    modparam("rr", "append_fromtag", 1)
+    
+    modparam("registrar", "tcp_persistent_flag", "TCP_PERSISTENT")
+    modparam("registrar", "received_avp", "$avp(received_nh)")
+    
+    modparam("usrloc", "nat_bflag", "NAT")
+    modparam("usrloc", "working_mode_preset", "single-instance-no-db")

@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Vosk STT Service
+  vosk-server:
+    build: 
+      context: ./vosk-server/docker
+      dockerfile: Dockerfile.kaldi-tr
+    container_name: vosk-server
+    ports:
+      - "2700:2700"
+    environment:
+      - VOSK_SERVER_PORT=2700
+    networks:
+      - ai-voice-network
+    restart: unless-stopped
+
+  # Piper TTS Service
+  piper-tts-server:
+    build:
+      context: ./piper-tts
+      dockerfile: Dockerfile
+    container_name: piper-tts-server
+    ports:
+      - "8000:8000"
+    networks:
+      - ai-voice-network
+    restart: unless-stopped
+
+  # (removed: llm-turkish-server)
+  # OpenSIPS AI Voice Connector (using voice-ai-core framework)
+  opensips-ai-voice-connector:
+    build:
+      context: .
+      dockerfile: opensips-ai-voice-connector/Dockerfile
+    container_name: opensips-ai-voice-connector
+    ports:
+      - "8089:8089/tcp"
+      - "8089:8089/udp"
+      - "8090:8090/udp"
+      - "35000-35100:35000-35100/udp"
+    environment:
+      - CONFIG_FILE=/app/cfg/opensips-ai-voice-connector.ini
+      - VOSK_SERVER_URL=ws://vosk-server:2700
+      - PIPER_TTS_URL=ws://piper-tts-server:8000
+
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./opensips-ai-voice-connector/cfg:/app/cfg:ro
+    depends_on:
+      - vosk-server
+      - piper-tts-server
+    networks:
+      - ai-voice-network
+    restart: unless-stopped
+
+  # OpenSIPS SIP Proxy
+  opensips:
+    image: opensips/opensips:3.6
+    container_name: opensips
+    ports:
+      - "5060:5060/tcp"
+      - "5060:5060/udp"
+      - "8080:8080"
+    volumes:
+      - ./opensips-ai-voice-connector/cfg/opensips.cfg:/etc/opensips/opensips.cfg:ro
+    networks:
+      - ai-voice-network
+    restart: unless-stopped
+
+networks:
+  ai-voice-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

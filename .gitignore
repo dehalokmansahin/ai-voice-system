@@ -1,0 +1,201 @@
+# AI Voice System - GitIgnore File
+# Excludes unnecessary files to save space and keep repo clean
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+conda-meta/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# PyTorch and ML Models (Large Files)
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+models/
+checkpoints/
+weights/
+
+# Audio Files (Can be large)
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+audio_samples/
+recordings/
+temp_audio/
+
+# Logs and Debug Files
+*.log
+logs/
+debug/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Environment Variables and Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.key
+*.pem
+*.crt
+*.p12
+secrets/
+config/secrets/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache and Temporary Files
+.cache/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Claude Code Specific
+.claude/
+.cursor/
+
+# Project Specific Exclusions
+# Pipecat source code (since we're using voice-ai-core)
+pipecat/
+opensips-ai-voice-connector/pipecat/
+
+# Large dependency directories that can be rebuilt
+opensips-ai-voice-connector/venv/
+opensips-ai-voice-connector/__pycache__/
+
+# Vosk models (large language models)
+vosk-server/models/
+vosk-server/*.tar.gz
+vosk-server/*.zip
+
+# Piper TTS models
+piper-tts/models/
+piper-tts/*.tar.gz
+piper-tts/*.onnx
+
+# OpenSIPS logs and runtime files
+opensips-ai-voice-connector/logs/
+*.pid
+*.sock
+
+# Test artifacts
+test_results/
+test_audio/
+test_output/
+
+# Documentation build artifacts
+docs/_build/
+docs/.doctrees/
+site/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*~
+
+# Compressed files (usually temporary)
+*.zip
+*.tar.gz
+*.tar.bz2
+*.7z
+*.rar
+
+# Large binary files that might be accidentally committed
+*.iso
+*.img
+*.vdi
+*.vmdk
+ai-agency-flows/

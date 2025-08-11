@@ -1,0 +1,85 @@
+# DEPRECATED: Local LLM Turkish server deployment - replaced with OpenAI integration
+# This file is kept for reference but should not be deployed
+
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: llm-turkish-server
+#   namespace: ai-voice-system
+#   labels:
+#     app: llm-turkish-server
+#     component: llm
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: llm-turkish-server
+#   template:
+#     metadata:
+#       labels:
+#         app: llm-turkish-server
+#         component: llm
+#     spec:
+#       containers:
+#       - name: llm-turkish-server
+#         image: europe-west4-docker.pkg.dev/gen-lang-client-0948780876/ai-voice-system/llm-turkish-server:latest
+#         ports:
+#         - containerPort: 8765
+#           protocol: TCP
+#           name: websocket
+#         env:
+#         - name: HOST
+#           value: "0.0.0.0"
+#         - name: PORT
+#           value: "8765"
+#         - name: MODEL_DIR
+#           value: "/app/model"
+#         - name: N_CTX
+#           value: "4096"
+#         - name: N_THREADS
+#           value: "6"
+#         - name: N_GPU_LAYERS
+#           value: "35"
+#         resources:
+#           requests:
+#             memory: "2Gi"
+#             cpu: "1000m"
+#           limits:
+#             memory: "4Gi"
+#             cpu: "2000m"
+#         volumeMounts:
+#         - name: model-storage
+#           mountPath: /app/model
+#         - name: rag-documents
+#           mountPath: /app/rag_documents
+#         - name: rag-vectorstore
+#           mountPath: /app/rag_vectorstore
+#         - name: rag-model
+#           mountPath: /app/rag_model
+#       volumes:
+#       - name: model-storage
+#         emptyDir: {}
+#       - name: rag-documents
+#         emptyDir: {}
+#       - name: rag-vectorstore
+#         emptyDir: {}
+#       - name: rag-model
+#         emptyDir: {}
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: llm-turkish-server
+#   namespace: ai-voice-system
+#   labels:
+#     app: llm-turkish-server
+#     component: llm
+# spec:
+#   type: ClusterIP
+#   selector:
+#     app: llm-turkish-server
+#   ports:
+#   - name: websocket
+#     port: 8765
+#     targetPort: 8765
+#     protocol: TCP

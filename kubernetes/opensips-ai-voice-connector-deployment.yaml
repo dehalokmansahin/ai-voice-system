@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensips-ai-voice-connector
+  namespace: ai-voice-system
+  labels:
+    app: opensips-ai-voice-connector
+    component: voice-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensips-ai-voice-connector
+  template:
+    metadata:
+      labels:
+        app: opensips-ai-voice-connector
+        component: voice-pipeline
+    spec:
+      containers:
+      - name: opensips-ai-voice-connector
+        image: europe-west4-docker.pkg.dev/gen-lang-client-0948780876/ai-voice-system/opensips-ai-voice-connector:latest
+        ports:
+        - containerPort: 8089
+          protocol: TCP
+          name: sip-tcp
+        - containerPort: 8089
+          protocol: UDP
+          name: sip-udp
+        - containerPort: 8090
+          protocol: UDP
+          name: events
+        - containerPort: 35000
+          protocol: UDP
+          name: rtp-start
+        env:
+        - name: CONFIG_FILE
+          value: "/app/cfg/opensips-ai-voice-connector.ini"
+        - name: VOSK_SERVER_URL
+          value: "ws://vosk-server:2700"
+        - name: PIPER_TTS_URL
+          value: "ws://piper-tts-server:8000"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-secret
+              key: api-key
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: PYTHONPATH
+          value: "/app"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONDONTWRITEBYTECODE
+          value: "1"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: config
+          mountPath: /app/cfg
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: opensips-ai-voice-connector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensips-ai-voice-connector
+  namespace: ai-voice-system
+  labels:
+    app: opensips-ai-voice-connector
+    component: voice-pipeline
+spec:
+  type: ClusterIP
+  selector:
+    app: opensips-ai-voice-connector
+  ports:
+  - name: sip-tcp
+    port: 8089
+    targetPort: 8089
+    protocol: TCP
+  - name: sip-udp
+    port: 8089
+    targetPort: 8089
+    protocol: UDP
+  - name: events
+    port: 8090
+    targetPort: 8090
+    protocol: UDP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensips-ai-voice-connector-config
+  namespace: ai-voice-system
+data:
+  opensips-ai-voice-connector.ini: |
+    [opensips]
+    event_ip = 0.0.0.0
+    event_port = 8090
+    sip_ip = 0.0.0.0
+    sip_port = 8089
+
+    [rtp]
+    bind_ip = 0.0.0.0
+    min_port = 35000
+    max_port = 35100
+
+    [stt]
+    service_url = ws://vosk-server:2700
+    timeout = 30
+
+    [openai]
+    model = gpt-4o-mini
+    temperature = 0.2
+    top_p = 0.7
+    max_tokens = 80
+
+    [tts]
+    service_url = ws://piper-tts-server:8000
+    timeout = 30

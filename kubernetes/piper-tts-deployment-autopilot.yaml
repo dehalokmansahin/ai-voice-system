@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: piper-tts-server
+  namespace: ai-voice-system
+  labels:
+    app: piper-tts-server
+    component: tts
+    service: text-to-speech
+    tier: ai-processing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: piper-tts-server
+  template:
+    metadata:
+      labels:
+        app: piper-tts-server
+        component: tts
+        service: text-to-speech
+        tier: ai-processing
+    spec:
+      containers:
+      - name: piper-tts-server
+        image: europe-west4-docker.pkg.dev/gen-lang-client-0948780876/ai-voice-system/piper-tts-server:v1.0.0
+        ports:
+        - containerPort: 8000
+          name: websocket
+          protocol: TCP
+        - containerPort: 8080
+          name: http-health
+          protocol: TCP
+        # Autopilot requires resource requests
+        resources:
+          requests:
+            cpu: "300m"
+            memory: "512Mi"
+          limits:
+            cpu: "800m"
+            memory: "1Gi"
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Environment variables
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8000"
+        - name: HEALTH_PORT
+          value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: piper-tts-server
+  namespace: ai-voice-system
+  labels:
+    app: piper-tts-server
+    component: tts
+    service: text-to-speech
+spec:
+  selector:
+    app: piper-tts-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: websocket
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http-health
+  type: ClusterIP

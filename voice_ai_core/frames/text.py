@@ -1,0 +1,45 @@
+"""
+Text and speech event frames
+Extracted and simplified from Pipecat
+"""
+
+from dataclasses import dataclass, field
+from typing import Optional
+from .base import DataFrame, SystemFrame
+
+
+@dataclass
+class TextFrame(DataFrame):
+    """Text data frame"""
+    text: str = ""
+
+
+@dataclass
+class TranscriptionFrame(TextFrame):
+    """Speech-to-text transcription result"""
+    confidence: Optional[float] = None
+    is_final: bool = True
+
+
+@dataclass
+class UserStartedSpeakingFrame(SystemFrame):
+    """User started speaking event"""
+    pass
+
+
+@dataclass
+class UserStoppedSpeakingFrame(SystemFrame):
+    """User stopped speaking event"""
+    pass
+
+
+@dataclass
+class VADUserStartedSpeakingFrame(SystemFrame):
+    """VAD detected user started speaking"""
+    pass
+
+
+@dataclass
+class VADUserStoppedSpeakingFrame(SystemFrame):
+    """VAD detected user stopped speaking"""
+    pass

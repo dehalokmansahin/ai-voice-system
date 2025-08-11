@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vosk-server
+  namespace: ai-voice-system
+  labels:
+    app: vosk-server
+    component: stt
+    service: speech-to-text
+    tier: ai-processing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vosk-server
+  template:
+    metadata:
+      labels:
+        app: vosk-server
+        component: stt
+        service: speech-to-text
+        tier: ai-processing
+    spec:
+      containers:
+      - name: vosk-server
+        image: europe-west4-docker.pkg.dev/gen-lang-client-0948780876/ai-voice-system/vosk-server:v1.0.0
+        ports:
+        - containerPort: 2700
+          name: websocket
+          protocol: TCP
+        # Autopilot requires resource requests
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+        # Health checks
+        livenessProbe:
+          tcpSocket:
+            port: 2700
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 2700
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Environment variables
+        env:
+        - name: VOSK_SAMPLE_RATE
+          value: "8000"
+        - name: VOSK_MODEL_PATH
+          value: "/opt/vosk-model-tr/model"
+        - name: VOSK_SERVER_PORT
+          value: "2700"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vosk-server
+  namespace: ai-voice-system
+  labels:
+    app: vosk-server
+    component: stt
+    service: speech-to-text
+spec:
+  selector:
+    app: vosk-server
+  ports:
+  - port: 2700
+    targetPort: 2700
+    protocol: TCP
+    name: websocket
+  type: ClusterIP
