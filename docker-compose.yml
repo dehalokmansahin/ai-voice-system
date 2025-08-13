@@ -17,15 +17,19 @@ services:
 
   # Piper TTS Service
   piper-tts-server:
-    build:
-      context: ./piper-tts
-      dockerfile: Dockerfile
+    image: dehalokmansahin/piper-tts-server:latest
     container_name: piper-tts-server
     ports:
       - "8000:8000"
     networks:
       - ai-voice-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # (removed: llm-turkish-server)
   # OpenSIPS AI Voice Connector (using voice-ai-core framework)
@@ -77,3 +81,9 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/16
+
+volumes:
+  piper_models:
+    driver: local
+  piper_cache:
+    driver: local

@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import asyncio
 
 from ..frames import Frame, TextFrame, StartFrame, EndFrame, DataFrame
-from .base import FrameProcessor, FrameDirection
+from ..pipeline.processor import FrameProcessor, FrameDirection
 
 
 class OpenAILLMContext:
@@ -52,7 +52,7 @@ class LLMUserContextAggregator(FrameProcessor):
         """Process user context frames"""
         if isinstance(frame, TextFrame):
             self._context.add_message("user", frame.text)
-        await self.push_frame(frame, direction)
+        yield frame
 
 
 class LLMAssistantContextAggregator(FrameProcessor):
@@ -66,7 +66,7 @@ class LLMAssistantContextAggregator(FrameProcessor):
         """Process assistant context frames"""
         if isinstance(frame, TextFrame):
             self._context.add_message("assistant", frame.text)
-        await self.push_frame(frame, direction)
+        yield frame
 
 
 class SentenceAggregator(FrameProcessor):
@@ -99,8 +99,9 @@ class SentenceAggregator(FrameProcessor):
                     self._aggregation = self._aggregation[last_pos + 1:].strip()
                     
                     if sentence:
-                        await self.push_frame(TextFrame(text=sentence), direction)
+                        yield TextFrame(text=sentence)
+            # Don't yield incomplete text frames - wait for complete sentences
             
         else:
             # Pass through non-text frames
-            await self.push_frame(frame, direction)
+            yield frame
