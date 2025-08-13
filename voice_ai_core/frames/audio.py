@@ -48,3 +48,13 @@ class TTSStartedFrame(SystemFrame):
 class TTSStoppedFrame(SystemFrame):
     """TTS synthesis stopped"""
     pass
+
+
+@dataclass
+class TTSAudioRawFrame(AudioFrame):
+    """TTS audio output frame"""
+    pass
+
+
+# Compatibility aliases
+AudioRawFrame = AudioFrame

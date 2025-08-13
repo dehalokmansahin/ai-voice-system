@@ -139,6 +139,36 @@ class CompatibilityModule:
         raise AttributeError(f"module '{self.module_name}' has no attribute '{name}'")
 
 
+# Serializer compatibility classes
+from enum import Enum
+from abc import ABC, abstractmethod
+
+class FrameSerializerType(Enum):
+    """Frame serializer types"""
+    TEXT = "text"
+    BINARY = "binary"
+    JSON = "json"
+
+class FrameSerializer(ABC):
+    """Base frame serializer class for compatibility"""
+    
+    @property
+    @abstractmethod
+    def type(self) -> FrameSerializerType:
+        """Get serializer type"""
+        pass
+    
+    @abstractmethod
+    async def serialize(self, frame) -> str | bytes | None:
+        """Serialize frame to data"""
+        pass
+    
+    @abstractmethod
+    async def deserialize(self, data: str | bytes):
+        """Deserialize data to frame"""
+        pass
+
+
 # Export all for star imports
 __all__ = [
     # Frames
@@ -179,5 +209,9 @@ __all__ = [
     'BaseService',
     'STTService',
     'TTSService',
-    'LLMService'
+    'LLMService',
+    
+    # Serializers
+    'FrameSerializer',
+    'FrameSerializerType'
 ]

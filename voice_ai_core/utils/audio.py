@@ -140,3 +140,34 @@ def pcm_to_alaw(pcm_data: np.ndarray) -> np.ndarray:
     """Convert 16-bit PCM to A-law (simplified)"""
     # Simplified A-law encoding - similar to μ-law
     return pcm_to_ulaw(pcm_data)  # Using same logic for simplicity
+
+
+def create_default_resampler():
+    """Create default resampler (compatibility function)"""
+    return None  # Simple placeholder - actual resampling done in convert functions
+
+
+async def pcm_to_ulaw(pcm_bytes: bytes, input_rate: int, output_rate: int, resampler=None) -> bytes:
+    """Convert PCM to μ-law with resampling"""
+    # First resample if needed
+    if input_rate != output_rate:
+        pcm_bytes = resample_audio(pcm_bytes, input_rate, output_rate)
+    
+    # Convert to μ-law
+    pcm_array = np.frombuffer(pcm_bytes, dtype=np.int16)
+    ulaw_array = pcm_to_ulaw(pcm_array)
+    return ulaw_array.tobytes()
+
+
+async def ulaw_to_pcm(ulaw_bytes: bytes, input_rate: int, output_rate: int, resampler=None) -> bytes:
+    """Convert μ-law to PCM with resampling"""
+    # Convert from μ-law
+    ulaw_array = np.frombuffer(ulaw_bytes, dtype=np.uint8)
+    pcm_array = ulaw_to_pcm(ulaw_array)
+    pcm_bytes = pcm_array.tobytes()
+    
+    # Resample if needed
+    if input_rate != output_rate:
+        pcm_bytes = resample_audio(pcm_bytes, input_rate, output_rate)
+    
+    return pcm_bytes

@@ -7,8 +7,8 @@ from typing import List, Dict, Any, Optional, AsyncIterator
 from dataclasses import dataclass, field
 import asyncio
 
-from ..frames import Frame, TextFrame, StartFrame, EndFrame
-from ..pipeline import FrameProcessor, FrameDirection
+from ..frames import Frame, TextFrame, StartFrame, EndFrame, DataFrame
+from .base import FrameProcessor, FrameDirection
 
 
 class OpenAILLMContext:
@@ -28,6 +28,45 @@ class OpenAILLMContext:
     def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages"""
         return self._messages.copy()
+    
+    @classmethod
+    def from_messages(cls, messages: List[Dict[str, str]]) -> "OpenAILLMContext":
+        """Create context from messages list"""
+        return cls(messages)
+
+
+@dataclass
+class OpenAILLMContextFrame(DataFrame):
+    """Frame containing OpenAI LLM context"""
+    context: OpenAILLMContext = field(default_factory=OpenAILLMContext)
+
+
+class LLMUserContextAggregator(FrameProcessor):
+    """Aggregates user context for LLM"""
+    
+    def __init__(self, context: OpenAILLMContext):
+        super().__init__()
+        self._context = context
+    
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        """Process user context frames"""
+        if isinstance(frame, TextFrame):
+            self._context.add_message("user", frame.text)
+        await self.push_frame(frame, direction)
+
+
+class LLMAssistantContextAggregator(FrameProcessor):
+    """Aggregates assistant context for LLM"""
+    
+    def __init__(self, context: OpenAILLMContext):
+        super().__init__()
+        self._context = context
+    
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        """Process assistant context frames"""
+        if isinstance(frame, TextFrame):
+            self._context.add_message("assistant", frame.text)
+        await self.push_frame(frame, direction)
 
 
 class SentenceAggregator(FrameProcessor):
@@ -35,37 +74,33 @@ class SentenceAggregator(FrameProcessor):
     
     def __init__(self):
         super().__init__()
-        self._buffer = ""
+        self._aggregation = ""
         self._sentence_endings = {'.', '!', '?', '\n'}
     
-    async def process_frame(
-        self, 
-        frame: Frame, 
-        direction: FrameDirection = FrameDirection.DOWNSTREAM
-    ) -> AsyncIterator[Frame]:
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
         """Process incoming frames and aggregate sentences"""
         
         if isinstance(frame, TextFrame):
             # Add text to buffer
-            self._buffer += frame.text
+            self._aggregation += frame.text
             
             # Check if we have a complete sentence
-            if any(ending in self._buffer for ending in self._sentence_endings):
+            if any(ending in self._aggregation for ending in self._sentence_endings):
                 # Find the last sentence ending
                 last_pos = -1
                 for ending in self._sentence_endings:
-                    pos = self._buffer.rfind(ending)
+                    pos = self._aggregation.rfind(ending)
                     if pos > last_pos:
                         last_pos = pos
                 
                 if last_pos >= 0:
                     # Extract complete sentence(s)
-                    sentence = self._buffer[:last_pos + 1].strip()
-                    self._buffer = self._buffer[last_pos + 1:].strip()
+                    sentence = self._aggregation[:last_pos + 1].strip()
+                    self._aggregation = self._aggregation[last_pos + 1:].strip()
                     
                     if sentence:
-                        yield TextFrame(text=sentence)
+                        await self.push_frame(TextFrame(text=sentence), direction)
             
         else:
             # Pass through non-text frames
-            yield frame
+            await self.push_frame(frame, direction)

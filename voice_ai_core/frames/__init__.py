@@ -15,19 +15,26 @@ from .base import (
 
 from .audio import (
     AudioFrame,
+    AudioRawFrame,
     InputAudioRawFrame,
     OutputAudioRawFrame,
     TTSStartedFrame,
-    TTSStoppedFrame
+    TTSStoppedFrame,
+    TTSAudioRawFrame
 )
 
 from .text import (
     TextFrame,
     TranscriptionFrame,
+    InterimTranscriptionFrame,
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
     VADUserStartedSpeakingFrame,
-    VADUserStoppedSpeakingFrame
+    VADUserStoppedSpeakingFrame,
+    LLMTextFrame,
+    LLMMessagesFrame,
+    LLMFullResponseStartFrame,
+    LLMFullResponseEndFrame
 )
 
 __all__ = [
@@ -42,16 +49,23 @@ __all__ = [
     
     # Audio frames
     'AudioFrame',
+    'AudioRawFrame',  # Compatibility alias
     'InputAudioRawFrame',
     'OutputAudioRawFrame',
     'TTSStartedFrame',
     'TTSStoppedFrame',
+    'TTSAudioRawFrame',
     
     # Text frames
     'TextFrame',
     'TranscriptionFrame',
+    'InterimTranscriptionFrame',
     'UserStartedSpeakingFrame',
     'UserStoppedSpeakingFrame',
     'VADUserStartedSpeakingFrame',
-    'VADUserStoppedSpeakingFrame'
+    'VADUserStoppedSpeakingFrame',
+    'LLMTextFrame',
+    'LLMMessagesFrame',
+    'LLMFullResponseStartFrame',
+    'LLMFullResponseEndFrame'
 ]

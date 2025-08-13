@@ -13,6 +13,13 @@ from ..frames import Frame, TextFrame, TTSStartedFrame, TTSStoppedFrame
 logger = structlog.get_logger()
 
 
+class FramePushed:
+    """Frame push event for observers"""
+    def __init__(self, frame: Frame, timestamp: int = None):
+        self.frame = frame
+        self.timestamp = timestamp or time.time_ns()
+
+
 class BaseObserver(ABC):
     """Base observer class"""
     
@@ -20,6 +27,10 @@ class BaseObserver(ABC):
     async def on_frame(self, frame: Frame) -> None:
         """Handle frame observation"""
         pass
+    
+    async def on_push_frame(self, data: FramePushed) -> None:
+        """Handle frame push event (compatibility for rate limiter)"""
+        await self.on_frame(data.frame)
 
 
 class DebugLogObserver(BaseObserver):

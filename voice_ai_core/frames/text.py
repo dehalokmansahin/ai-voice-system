@@ -43,3 +43,33 @@ class VADUserStartedSpeakingFrame(SystemFrame):
 class VADUserStoppedSpeakingFrame(SystemFrame):
     """VAD detected user stopped speaking"""
     pass
+
+
+@dataclass
+class InterimTranscriptionFrame(TranscriptionFrame):
+    """Interim/partial speech transcription result"""
+    is_final: bool = False
+
+
+@dataclass
+class LLMTextFrame(TextFrame):
+    """LLM generated text frame"""
+    pass
+
+
+@dataclass
+class LLMMessagesFrame(DataFrame):
+    """LLM messages frame"""
+    messages: list = field(default_factory=list)
+
+
+@dataclass
+class LLMFullResponseStartFrame(SystemFrame):
+    """LLM full response started"""
+    pass
+
+
+@dataclass
+class LLMFullResponseEndFrame(SystemFrame):
+    """LLM full response ended"""
+    pass
