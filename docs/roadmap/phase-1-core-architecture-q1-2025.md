@@ -30,15 +30,24 @@
 - [ ] Add codec abstraction layer
 
 ### Sprint 4 Tasks (Feb 24 - Mar 2)
-- [ ] WebRTC transport implementation
-- [ ] Coturn/TURN integration
+- [ ] LiveKit WebRTC server integration
+- [ ] LiveKitTransport implementation with Pipecat
+- [ ] VAD and Smart-Turn v2 analyzer setup
+- [ ] WebRTC browser client development
+- [ ] Audio pipeline optimization for 16kHz mono PCM
 - [ ] Multi-codec support (Opus, PCM, μ-law)
 - [ ] Transport manager for multi-protocol handling
 
 **Technical Deliverables:**
 - Universal transport abstraction
 - Multi-protocol support foundation
-- WebRTC functionality
+- **LiveKit WebRTC Integration:**
+  - Self-hosted LiveKit server
+  - Pipecat LiveKitTransport integration
+  - Browser client with audio capture/playback
+  - VAD + Smart-Turn v2 for Turkish language
+  - End-to-end latency <800ms target
+  - WebRTC connection establishment <3s
 
 ## Sprint 5: Multi-Tenancy Foundation (Mar 3-16)
 **Technical Goal**: Implement secure tenant isolation

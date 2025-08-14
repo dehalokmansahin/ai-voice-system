@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Assistant - WebRTC Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .app-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .app-header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e53e3e;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background: #38a169;
+        }
+
+        .status-dot.connecting {
+            background: #dd6b20;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .status-text {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .voice-controls {
+            margin: 30px 0;
+        }
+
+        .primary-btn, .secondary-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .primary-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .primary-btn:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .primary-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .secondary-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .secondary-btn:hover:not(:disabled) {
+            background: #cbd5e0;
+            transform: translateY(-2px);
+        }
+
+        .secondary-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .audio-visualizer {
+            height: 60px;
+            background: #f7fafc;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .audio-bars {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .bar {
+            width: 4px;
+            background: #667eea;
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .conversation-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .message.user {
+            background: #e6fffa;
+            border-left: 4px solid #38b2ac;
+        }
+
+        .message.ai {
+            background: #ebf4ff;
+            border-left: 4px solid #4299e1;
+        }
+
+        .message.system {
+            background: #fef5e7;
+            border-left: 4px solid #ed8936;
+            font-style: italic;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #718096;
+            margin-left: 10px;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .language-selector {
+            margin-bottom: 20px;
+        }
+
+        .language-selector select {
+            padding: 8px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .app-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            .app-header h1 {
+                font-size: 24px;
+            }
+            
+            .primary-btn, .secondary-btn {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="voice-ai-app">
+        <header class="app-header">
+            <h1 id="app-title">AI Voice Assistant</h1>
+            <div class="language-selector">
+                <select id="language-select">
+                    <option value="en">English</option>
+                    <option value="tr">Türkçe</option>
+                </select>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot" id="status-dot"></span>
+                <span class="status-text" id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <div class="voice-controls">
+                <button id="connect-btn" class="primary-btn">
+                    Connect to AI Assistant
+                </button>
+                <button id="disconnect-btn" class="secondary-btn" disabled>
+                    Disconnect
+                </button>
+            </div>
+
+            <div class="audio-visualizer" id="audio-viz">
+                <div class="audio-bars" id="audio-bars">
+                    <!-- Audio bars will be generated here -->
+                </div>
+            </div>
+
+            <div class="conversation-log" id="conversation" style="display: none;">
+                <!-- Conversation messages will appear here -->
+            </div>
+
+            <div id="error-container"></div>
+        </main>
+    </div>
+
+    <!-- LiveKit SDK -->
+    <script src="https://unpkg.com/livekit-client@1.15.13/dist/livekit-client.umd.js"></script>
+    
+    <script>
+        // Application State
+        const AppStates = {
+            DISCONNECTED: 'disconnected',
+            CONNECTING: 'connecting',
+            CONNECTED: 'connected',
+            LISTENING: 'listening',
+            PROCESSING: 'processing',
+            SPEAKING: 'speaking',
+            ERROR: 'error'
+        };
+
+        // Internationalization
+        const Languages = {
+            en: {
+                title: "AI Voice Assistant",
+                disconnected: "Disconnected",
+                connecting: "Connecting...",
+                connected: "Connected - Start speaking",
+                listening: "Listening...",
+                processing: "AI is thinking...",
+                speaking: "AI is responding...",
+                error: "Connection error",
+                connectBtn: "Connect to AI Assistant",
+                disconnectBtn: "Disconnect",
+                microphonePermission: "Please allow microphone access to continue",
+                connectionError: "Failed to connect to voice assistant. Please try again.",
+                browserNotSupported: "Your browser doesn't support WebRTC. Please use Chrome, Firefox, Safari, or Edge."
+            },
+            tr: {
+                title: "AI Ses Asistanı",
+                disconnected: "Bağlantı Yok",
+                connecting: "Bağlanıyor...",
+                connected: "Bağlandı - Konuşmaya başlayın",
+                listening: "Dinliyor...",
+                processing: "AI düşünüyor...",
+                speaking: "AI yanıtlıyor...",
+                error: "Bağlantı hatası",
+                connectBtn: "AI Asistanına Bağlan",
+                disconnectBtn: "Bağlantıyı Kes",
+                microphonePermission: "Devam etmek için mikrofon erişimine izin verin",
+                connectionError: "Ses asistanına bağlanılamadı. Lütfen tekrar deneyin.",
+                browserNotSupported: "Tarayıcınız WebRTC desteklemiyor. Chrome, Firefox, Safari veya Edge kullanın."
+            }
+        };
+
+        // Main Application Class
+        class VoiceAIClient {
+            constructor() {
+                this.currentLanguage = 'en';
+                this.currentState = AppStates.DISCONNECTED;
+                this.room = null;
+                this.localTrack = null;
+                this.isRecording = false;
+                
+                this.config = {
+                    serverUrl: 'ws://localhost:7880',
+                    roomName: 'voice-ai-session',
+                    userName: 'user-' + Math.random().toString(36).substr(2, 9)
+                };
+
+                this.initializeUI();
+                this.setupEventListeners();
+                this.detectLanguage();
+                this.generateAudioBars();
+            }
+
+            initializeUI() {
+                this.elements = {
+                    statusDot: document.getElementById('status-dot'),
+                    statusText: document.getElementById('status-text'),
+                    connectBtn: document.getElementById('connect-btn'),
+                    disconnectBtn: document.getElementById('disconnect-btn'),
+                    conversation: document.getElementById('conversation'),
+                    errorContainer: document.getElementById('error-container'),
+                    languageSelect: document.getElementById('language-select'),
+                    appTitle: document.getElementById('app-title'),
+                    audioBars: document.getElementById('audio-bars')
+                };
+            }
+
+            setupEventListeners() {
+                this.elements.connectBtn.addEventListener('click', () => this.connect());
+                this.elements.disconnectBtn.addEventListener('click', () => this.disconnect());
+                this.elements.languageSelect.addEventListener('change', (e) => this.changeLanguage(e.target.value));
+            }
+
+            detectLanguage() {
+                const browserLang = navigator.language.split('-')[0];
+                if (Languages[browserLang]) {
+                    this.currentLanguage = browserLang;
+                    this.elements.languageSelect.value = browserLang;
+                }
+                this.updateLanguage();
+            }
+
+            changeLanguage(lang) {
+                this.currentLanguage = lang;
+                this.updateLanguage();
+            }
+
+            updateLanguage() {
+                const strings = Languages[this.currentLanguage];
+                this.elements.appTitle.textContent = strings.title;
+                this.elements.connectBtn.textContent = strings.connectBtn;
+                this.elements.disconnectBtn.textContent = strings.disconnectBtn;
+                this.updateStatus();
+            }
+
+            generateAudioBars() {
+                const barsContainer = this.elements.audioBars;
+                barsContainer.innerHTML = '';
+                
+                for (let i = 0; i < 20; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.style.height = '4px';
+                    barsContainer.appendChild(bar);
+                }
+            }
+
+            animateAudioBars(isActive) {
+                const bars = this.elements.audioBars.children;
+                
+                if (isActive) {
+                    Array.from(bars).forEach((bar, index) => {
+                        setTimeout(() => {
+                            const height = Math.random() * 30 + 4;
+                            bar.style.height = height + 'px';
+                        }, index * 50);
+                    });
+                } else {
+                    Array.from(bars).forEach(bar => {
+                        bar.style.height = '4px';
+                    });
+                }
+            }
+
+            async connect() {
+                try {
+                    this.setState(AppStates.CONNECTING);
+                    this.clearError();
+
+                    // Check WebRTC support
+                    if (!window.LiveKitClient) {
+                        throw new Error('LiveKit SDK not loaded');
+                    }
+
+                    // Initialize LiveKit Room
+                    this.room = new LiveKitClient.Room({
+                        adaptiveStream: true,
+                        audioCaptureDefaults: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        },
+                        audioPlaybackDefaults: {
+                            sampleRate: 16000,
+                            channelCount: 1
+                        }
+                    });
+
+                    this.setupRoomEventHandlers();
+
+                    // Generate JWT token (in production, get from your backend)
+                    const token = await this.generateAccessToken();
+
+                    // Connect to room
+                    await this.room.connect(this.config.serverUrl, token, {
+                        autoSubscribe: true
+                    });
+
+                    // Enable microphone
+                    await this.enableMicrophone();
+
+                    this.setState(AppStates.CONNECTED);
+                    this.addMessage('system', 'Connected to AI Assistant');
+
+                } catch (error) {
+                    console.error('Connection failed:', error);
+                    this.setState(AppStates.ERROR);
+                    this.showError(Languages[this.currentLanguage].connectionError);
+                }
+            }
+
+            async disconnect() {
+                try {
+                    if (this.localTrack) {
+                        this.localTrack.stop();
+                        this.localTrack = null;
+                    }
+
+                    if (this.room) {
+                        await this.room.disconnect();
+                        this.room = null;
+                    }
+
+                    this.setState(AppStates.DISCONNECTED);
+                    this.addMessage('system', 'Disconnected from AI Assistant');
+
+                } catch (error) {
+                    console.error('Disconnect failed:', error);
+                    this.showError('Failed to disconnect properly');
+                }
+            }
+
+            setupRoomEventHandlers() {
+                this.room.on('connected', () => {
+                    console.log('Room connected');
+                });
+
+                this.room.on('trackPublished', (publication, participant) => {
+                    console.log('Track published:', publication.trackSid);
+                });
+
+                this.room.on('trackSubscribed', (track, publication, participant) => {
+                    if (track.kind === 'audio' && participant.identity !== this.room.localParticipant.identity) {
+                        // AI audio response received
+                        this.setState(AppStates.SPEAKING);
+                        this.animateAudioBars(true);
+                        
+                        track.on('ended', () => {
+                            this.setState(AppStates.LISTENING);
+                            this.animateAudioBars(false);
+                        });
+                    }
+                });
+
+                this.room.on('disconnected', (reason) => {
+                    console.log('Room disconnected:', reason);
+                    this.setState(AppStates.DISCONNECTED);
+                });
+
+                this.room.on('connectionQualityChanged', (quality, participant) => {
+                    console.log('Connection quality:', quality);
+                });
+            }
+
+            async enableMicrophone() {
+                try {
+                    const track = await LiveKitClient.createLocalAudioTrack({
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    });
+
+                    await this.room.localParticipant.publishTrack(track);
+                    this.localTrack = track;
+
+                    // Setup audio level monitoring
+                    this.setupAudioLevelMonitoring(track);
+
+                } catch (error) {
+                    console.error('Microphone access failed:', error);
+                    throw new Error(Languages[this.currentLanguage].microphonePermission);
+                }
+            }
+
+            setupAudioLevelMonitoring(track) {
+                // Monitor audio levels for visualization
+                const mediaStreamTrack = track.mediaStreamTrack;
+                if (mediaStreamTrack) {
+                    const stream = new MediaStream([mediaStreamTrack]);
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    const analyser = audioContext.createAnalyser();
+                    
+                    source.connect(analyser);
+                    analyser.fftSize = 256;
+                    
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    
+                    const checkAudioLevel = () => {
+                        analyser.getByteFrequencyData(dataArray);
+                        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+                        
+                        if (average > 10 && this.currentState === AppStates.CONNECTED) {
+                            this.setState(AppStates.LISTENING);
+                            this.animateAudioBars(true);
+                        } else if (average < 5 && this.currentState === AppStates.LISTENING) {
+                            setTimeout(() => {
+                                if (this.currentState === AppStates.LISTENING) {
+                                    this.setState(AppStates.CONNECTED);
+                                    this.animateAudioBars(false);
+                                }
+                            }, 1000);
+                        }
+                        
+                        if (this.room && this.room.state === 'connected') {
+                            requestAnimationFrame(checkAudioLevel);
+                        }
+                    };
+                    
+                    checkAudioLevel();
+                }
+            }
+
+            async generateAccessToken() {
+                // In production, this should be done by your backend server
+                // For development, we'll use a simple token
+                const payload = {
+                    iss: 'devkey',
+                    sub: this.config.userName,
+                    aud: 'livekit',
+                    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
+                    nbf: Math.floor(Date.now() / 1000),
+                    room: this.config.roomName,
+                    canPublish: true,
+                    canSubscribe: true,
+                    canPublishData: true
+                };
+
+                // This is a simplified token - in production use proper JWT signing
+                return btoa(JSON.stringify(payload));
+            }
+
+            setState(newState) {
+                this.currentState = newState;
+                this.updateStatus();
+                this.updateControls();
+            }
+
+            updateStatus() {
+                const strings = Languages[this.currentLanguage];
+                const dot = this.elements.statusDot;
+                const text = this.elements.statusText;
+
+                dot.className = 'status-dot';
+                
+                switch (this.currentState) {
+                    case AppStates.DISCONNECTED:
+                        text.textContent = strings.disconnected;
+                        break;
+                    case AppStates.CONNECTING:
+                        text.textContent = strings.connecting;
+                        dot.classList.add('connecting');
+                        break;
+                    case AppStates.CONNECTED:
+                        text.textContent = strings.connected;
+                        dot.classList.add('connected');
+                        break;
+                    case AppStates.LISTENING:
+                        text.textContent = strings.listening;
+                        dot.classList.add('connected');
+                        break;
+                    case AppStates.PROCESSING:
+                        text.textContent = strings.processing;
+                        dot.classList.add('connecting');
+                        break;
+                    case AppStates.SPEAKING:
+                        text.textContent = strings.speaking;
+                        dot.classList.add('connected');
+                        break;
+                    case AppStates.ERROR:
+                        text.textContent = strings.error;
+                        break;
+                }
+            }
+
+            updateControls() {
+                const isConnected = [AppStates.CONNECTED, AppStates.LISTENING, AppStates.PROCESSING, AppStates.SPEAKING].includes(this.currentState);
+                const isConnecting = this.currentState === AppStates.CONNECTING;
+
+                this.elements.connectBtn.disabled = isConnected || isConnecting;
+                this.elements.disconnectBtn.disabled = !isConnected && !isConnecting;
+
+                if (isConnected) {
+                    this.elements.conversation.style.display = 'block';
+                }
+            }
+
+            addMessage(type, content) {
+                const conversation = this.elements.conversation;
+                const message = document.createElement('div');
+                message.className = `message ${type}`;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                message.innerHTML = `
+                    <span>${content}</span>
+                    <span class="timestamp">${timestamp}</span>
+                `;
+                
+                conversation.appendChild(message);
+                conversation.scrollTop = conversation.scrollHeight;
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                
+                this.elements.errorContainer.innerHTML = '';
+                this.elements.errorContainer.appendChild(errorDiv);
+                
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+
+            clearError() {
+                this.elements.errorContainer.innerHTML = '';
+            }
+        }
+
+        // Initialize the application
+        let voiceClient;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check WebRTC support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                document.body.innerHTML = `
+                    <div class="app-container">
+                        <h1 style="color: #e53e3e;">Browser Not Supported</h1>
+                        <p>Your browser doesn't support WebRTC. Please use Chrome, Firefox, Safari, or Edge.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            voiceClient = new VoiceAIClient();
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && voiceClient && voiceClient.room) {
+                // Page is hidden, could pause or maintain connection
+                console.log('Page hidden, connection maintained');
+            } else if (!document.hidden && voiceClient) {
+                // Page is visible again
+                console.log('Page visible, checking connection');
+            }
+        });
+    </script>
+</body>
+</html>

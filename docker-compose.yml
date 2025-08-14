@@ -1,6 +1,41 @@
 version: '3.8'
 
 services:
+  # LiveKit WebRTC Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    ports:
+      - "7880:7880"     # WebRTC signaling (TCP)
+      - "7881:7881"     # TURN server (TCP/UDP)  
+      - "7882:7882/udp" # ICE candidate range start
+      - "7883:7883/udp"
+      - "7884:7884/udp"
+      - "7885:7885/udp"
+      - "7886:7886/udp"
+      - "7887:7887/udp"
+      - "7888:7888/udp"
+      - "7889:7889/udp"
+      - "7890:7890/udp" # ICE candidate range end
+    environment:
+      - LIVEKIT_KEYS=devkey:secret
+      - LIVEKIT_CONFIG=/etc/livekit.yaml
+    volumes:
+      - ./livekit-config.yaml:/etc/livekit.yaml:ro
+    networks:
+      - ai-voice-network
+    restart: unless-stopped
+    command: 
+      - --config
+      - /etc/livekit.yaml
+      - --dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7880/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   # Vosk STT Service
   vosk-server:
     build: 
@@ -47,7 +82,10 @@ services:
       - CONFIG_FILE=/app/cfg/opensips-ai-voice-connector.ini
       - VOSK_SERVER_URL=ws://vosk-server:2700
       - PIPER_TTS_URL=ws://piper-tts-server:8000
-
+      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_SECRET_KEY=secret
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - LOG_LEVEL=INFO
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
@@ -55,6 +93,7 @@ services:
     volumes:
       - ./opensips-ai-voice-connector/cfg:/app/cfg:ro
     depends_on:
+      - livekit
       - vosk-server
       - piper-tts-server
     networks:

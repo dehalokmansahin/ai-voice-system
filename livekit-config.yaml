@@ -1,0 +1,126 @@
+# LiveKit Server Configuration for AI Voice System
+# Optimized for Turkish language voice interactions with Pipecat
+
+port: 7880
+bind_addresses:
+  - ""
+
+# API and Secret Keys for Development
+keys:
+  devkey: secret
+
+# WebRTC Configuration
+rtc:
+  # TCP and UDP ports for WebRTC traffic
+  tcp_port: 7881
+  udp_port: 7882
+  
+  # ICE server configuration
+  ice_servers:
+    - urls:
+        - "stun:stun.l.google.com:19302"
+        - "stun:stun1.l.google.com:19302"
+      username: ""
+      credential: ""
+  
+  # Port range for ICE candidates (configured in Docker ports)
+  port_range_start: 7882
+  port_range_end: 7890
+  
+  # Enable TURN server for NAT traversal
+  use_ice_lite: false
+  
+# Audio Configuration optimized for voice AI pipeline
+audio:
+  # Configure for 16kHz mono PCM as per WebRTC plan
+  sample_rate: 16000
+  channels: 1
+  
+  # Opus codec configuration for WebRTC
+  opus:
+    dtx: true  # Discontinuous transmission for efficiency
+    fec: true  # Forward error correction
+    
+  # Audio processing settings
+  echo_cancellation: true
+  noise_suppression: true
+  auto_gain_control: true
+
+# Room and participant limits
+room:
+  # Maximum participants per room (1 user + 1 AI for voice sessions)
+  max_participants: 2
+  
+  # Room timeout settings
+  empty_timeout: 300s      # 5 minutes
+  departure_timeout: 20s   # 20 seconds
+  
+  # Enable room recording if needed for debugging
+  auto_create: true
+
+# Webhook configuration (optional for production)
+webhook:
+  api_key: devkey
+  urls: []
+
+# Development settings
+development:
+  # Enable detailed logging for development
+  log_level: debug
+  
+  # Disable authentication for local development
+  disable_strict_config: true
+
+# Prometheus metrics endpoint
+prometheus:
+  port: 6789
+  
+# Node configuration for clustering (single node for MVP)
+node:
+  ip: ""
+  
+# Redis configuration (not needed for single-node setup)
+redis: null
+
+# Logging configuration
+logging:
+  level: debug
+  
+# Turn server configuration for NAT traversal
+turn:
+  enabled: true
+  domain: localhost
+  tls_port: 5349
+  udp_port: 3478
+  
+  # TURN credentials for development
+  username: livekit
+  password: turnpassword
+
+# Region and availability zone (for production scaling)
+region: local
+availability_zone: local-az
+
+# Signal relay configuration
+signal_relay:
+  retry_timeout: 3s
+  
+# Development ingress (for local testing)
+ingress:
+  rtmp_base_url: "rtmp://localhost/live"
+  whip_base_url: "http://localhost:8080/whip"
+  
+# Template for Turkish language optimized rooms
+templates:
+  turkish_voice_room:
+    max_participants: 2
+    audio:
+      sample_rate: 16000
+      channels: 1
+      opus:
+        dtx: true
+        fec: true
+    metadata:
+      language: "tr-TR"
+      purpose: "voice_ai_interaction"
+      pipeline: "pipecat_webrtc"
